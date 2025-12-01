@@ -4,6 +4,7 @@ import {
   Play, Pause, SkipForward, SkipBack, List, Search, 
   Settings, Home, RefreshCw, X, Globe, Lock, MoreVertical, Youtube, User, Minimize2, Maximize2
 } from 'lucide-react';
+import Hls from 'hls.js';
 import { VideoItem, UserSettings, DEFAULT_INSTANCES } from './types';
 import * as youtubeService from './services/youtubeService';
 import SettingsModal from './components/SettingsModal';
@@ -43,6 +44,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [showControls, setShowControls] = useState(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
   
   // UI
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +58,13 @@ export default function App() {
 
   useEffect(() => {
     initApp();
+    
+    // Cleanup HLS on unmount
+    return () => {
+        if (hlsRef.current) {
+            hlsRef.current.destroy();
+        }
+    };
   }, []);
 
   const initApp = async () => {
@@ -92,16 +101,60 @@ export default function App() {
       
       setIsLoadingStream(true);
       setErrorMsg(null);
-      // Pause previous while loading
-      if(videoRef.current) videoRef.current.pause();
+      
+      // Cleanup previous stream
+      if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+      }
+      if(videoRef.current) {
+          videoRef.current.pause();
+          videoRef.current.removeAttribute('src'); 
+          videoRef.current.load();
+      }
 
       const streamInfo = await youtubeService.getVideoStreams(video.id);
       
-      if (streamInfo) {
+      if (streamInfo && videoRef.current) {
         setCurrentStreamUrl(streamInfo.url);
         setIsAudioOnly(!!streamInfo.isAudioOnly);
         updateMediaSession(video);
-        // Video element autoPlay is set, so it should start
+
+        // HLS Logic
+        if (Hls.isSupported() && streamInfo.mimeType === 'application/x-mpegURL') {
+            const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+            });
+            hls.loadSource(streamInfo.url);
+            hls.attachMedia(videoRef.current);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoRef.current?.play().catch(e => console.warn("Auto-play blocked:", e));
+            });
+            hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.log('fatal network error encountered, try to recover');
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.log('fatal media error encountered, try to recover');
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            hls.destroy();
+                            break;
+                    }
+                }
+            });
+            hlsRef.current = hls;
+        } else {
+            // Native Support (Safari/iOS) or standard MP4
+            videoRef.current.src = streamInfo.url;
+            videoRef.current.play().catch(e => console.warn("Auto-play blocked:", e));
+        }
+
       } else {
         console.error("Stream load failed");
         // Try next video after short delay
@@ -117,13 +170,7 @@ export default function App() {
   useEffect(() => {
     if (!videoRef.current) return;
     if (isPlaying) {
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.log("Auto-play prevented or interrupted");
-                setIsPlaying(false);
-            });
-        }
+        videoRef.current.play().catch(() => setIsPlaying(false));
     } else {
       videoRef.current.pause();
     }
@@ -255,10 +302,8 @@ export default function App() {
       >
         <video 
           ref={videoRef}
-          src={currentStreamUrl || ''}
           className={`w-full h-full bg-black object-contain ${isAudioOnly ? 'hidden' : 'block'}`}
           playsInline
-          autoPlay
           onTimeUpdate={(e) => {
              setCurrentTime(e.currentTarget.currentTime);
              setDuration(e.currentTarget.duration || 0);

@@ -28,13 +28,12 @@ export interface StreamInfo {
   isAudioOnly?: boolean;
 }
 
-// Highly reliable Piped instances sorted by uptime probability
-// Updated with currently working instances
+// Updated list prioritizing instances less likely to be blocked by AVs
 export const DEFAULT_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://api.piped.privacy.com.de',
-  'https://pipedapi.drgns.space',
+  'https://api.piped.privacy.com.de',  // Usually cleaner reputation
+  'https://pipedapi.drgns.space',      // Good uptime
   'https://api.piped.chalos.xyz',
+  'https://pipedapi.kavin.rocks',      // Fallback (often blocked)
   'https://pipedapi.tokhmi.xyz',
   'https://api.piped.projectsegfau.lt',
   'https://pipedapi.adminforge.de',
