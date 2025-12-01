@@ -1,0 +1,5 @@
+{
+  "name": "BahaTube",
+  "description": "A mobile-first YouTube player optimized for background audio playback with screen lock support and AI playlist generation.",
+  "requestFramePermissions": []
+}
