@@ -28,15 +28,14 @@ export interface StreamInfo {
   isAudioOnly?: boolean;
 }
 
-// Updated list prioritizing instances less likely to be blocked by AVs
+// Updated list: Removed 'tokhmi', prioritized 'clean' domains
 export const DEFAULT_INSTANCES = [
-  'https://api.piped.privacy.com.de',  // Usually cleaner reputation
-  'https://pipedapi.drgns.space',      // Good uptime
-  'https://api.piped.chalos.xyz',
-  'https://pipedapi.kavin.rocks',      // Fallback (often blocked)
-  'https://pipedapi.tokhmi.xyz',
-  'https://api.piped.projectsegfau.lt',
-  'https://pipedapi.adminforge.de',
-  'https://api.piped.forcad.Pd',
-  'https://piped-api.lunar.icu'
+  'https://api.piped.privacy.com.de',   // Germany (High reliability)
+  'https://pipedapi.drgns.space',       // US (Fast)
+  'https://api.piped.chalos.xyz',       // US
+  'https://pipedapi.smnz.de',           // Germany (Clean)
+  'https://pipedapi.moomoo.me',         // Australia
+  'https://api.piped.projectsegfau.lt', // Lithuania
+  'https://pipedapi.ducks.party',       // Global
+  'https://api.piped.forcad.Pd'         // Fallback
 ];

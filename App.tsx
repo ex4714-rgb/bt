@@ -59,7 +59,6 @@ export default function App() {
   useEffect(() => {
     initApp();
     
-    // Cleanup HLS on unmount
     return () => {
         if (hlsRef.current) {
             hlsRef.current.destroy();
@@ -70,24 +69,29 @@ export default function App() {
   const initApp = async () => {
     setIsLoading(true);
     setErrorMsg(null);
+    
+    // We intentionally ignore errors here because getPopularVideos has internal fallbacks
     try {
       await youtubeService.findFastestInstance();
-      await loadHomeFeed();
-    } catch (e) {
-      setErrorMsg("Could not connect to network. Please retry.");
-      setIsLoading(false);
+    } catch(e) {
+      console.log("Fastest instance check skipped, using defaults");
     }
+    
+    await loadHomeFeed();
   };
 
   const loadHomeFeed = async () => {
     setIsLoading(true);
     const videos = await youtubeService.getPopularVideos();
-    if (videos.length > 0) {
-      setHomeVideos(videos);
-      setErrorMsg(null);
-    } else {
-      setErrorMsg("No videos found. Try searching.");
+    setHomeVideos(videos);
+    
+    // If we only got the 4 fallback videos, and we didn't mean to
+    if (videos.length === 4 && videos[0].channelTitle === 'Lofi Girl') {
+        // We don't show error, we just show the fallback content gracefully
+        // But we can Log it
+        console.warn("Using fallback content due to network issues.");
     }
+    
     setIsLoading(false);
   };
 
@@ -232,7 +236,7 @@ export default function App() {
     if (results.length > 0) {
         setHomeVideos(results);
     } else {
-        setErrorMsg("No results found.");
+        setErrorMsg("No results found. Network might be restricted.");
     }
     setIsLoading(false);
   };
